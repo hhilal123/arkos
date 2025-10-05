@@ -1,7 +1,15 @@
 from openai import OpenAI
 from mem0 import Memory
 
-openai_client = OpenAI()
+
+base_url = "http://0.0.0.0:30000/v1"
+
+client = OpenAI(
+            base_url=base_url,
+            api_key="dummy",
+        )
+
+
 memory = Memory()
 
 def chat_with_memories(message: str, user_id: str = "default_user") -> str:
@@ -12,7 +20,7 @@ def chat_with_memories(message: str, user_id: str = "default_user") -> str:
     # Generate Assistant response
     system_prompt = f"You are a helpful AI. Answer the question based on query and memories.\nUser Memories:\n{memories_str}"
     messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": message}]
-    response = openai_client.chat.completions.create(model="gpt-4o-mini", messages=messages)
+    response = client.chat.completions.create(messages=messages)
     assistant_response = response.choices[0].message.content
 
     # Create new memories from the conversation
