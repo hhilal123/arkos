@@ -56,3 +56,4 @@ This repo is rather chaotic, but from a top-level point of view, here's each fil
 | Jack Luo              | Backend        | thejackluo      | Georgia Tech  |
 | Bryce Roberts         | Backend        | BryceRoberts13  | MIT           |
 | Angela Liu            | Backend        | angelaliu6      | MIT           |
+| Ishaana Misra         | Backend        | ishaanam        | MIT           |
