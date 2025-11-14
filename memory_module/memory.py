@@ -14,11 +14,49 @@ from state_module.state import State  # Import State class for managing state na
 
 import uuid
 from mem0 import Memory as Mem0Memory
+base_url = "http://0.0.0.0:30000/v1"
+
+client = OpenAI(
+            base_url=base_url,
+            api_key="dummy",
+        )
+
+
+
+
+os.environ["OPENAI_API_KEY"] = "sk"
+config = {
+    "vector_store": {
+        "provider": "supabase",
+        "config": {
+            # "connection_string": "postgresql://user:password@host:port/database",
+            "connection_string": "postgresql://postgres:your-super-secret-and-long-postgres-password@localhost:54322/postgres",
+            "collection_name": "memories",
+            "index_method": "hnsw",  # Optional: defaults to "auto"
+            "index_measure": "cosine_distance"  # Optional: defaults to "cosine_distance"
+        }
+    },
+    "llm": {
+        "provider": "vllm",
+        "config": {
+            "model": "Qwen/Qewn2.5-7B-Instruct",
+            "vllm_base_url": "http://localhost:30000/v1",
+        },
+    },
+    "embedder": {
+        "provider": "huggingface",
+        "config": {
+            "huggingface_base_url": "http://localhost:4444/v1"
+        }
+    }
+    }
+
+
 
 class Memory:
     def __init__(self, user_id: str, session_id: str, mem0_config: Dict[str, Any]):
         self.user_id = user_id
-        self.mem0 = Mem0Memory.from_config(mem0_config)
+        self.mem0 = Mem0Memory.from_config(config)
         if session_id not None self.session_id = session_id else session_id =  str(uuid.uuid4())
 
 
@@ -81,7 +119,7 @@ class Memory:
                 query=query,
                 user_id=self.user_id,
                 limit=mem0_limit,
-                metadata_filter={"session_id": self.session_id}
+               
             )
 
             # Extract messages and truncate to context_limit
