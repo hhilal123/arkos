@@ -16,8 +16,8 @@ config = {
             "connection_string": "postgresql://postgres:your-super-secret-and-long-postgres-password@localhost:54322/postgres",
             "collection_name": "memories",
             "index_method": "hnsw",
-            "index_measure": "cosine_distance"
-        }
+            "index_measure": "cosine_distance",
+        },
     },
     "llm": {
         "provider": "vllm",
@@ -28,15 +28,18 @@ config = {
     },
     "embedder": {
         "provider": "huggingface",
-        "config": {
-            "huggingface_base_url": "http://localhost:4444/v1"
-        }
-    }
+        "config": {"huggingface_base_url": "http://localhost:4444/v1"},
+    },
 }
 
 
-
 class Memory:
+    """
+    Connects agent to supabase backend for long
+    and short term memories
+
+    """
+
     def __init__(self, user_id: str, session_id: str, db_url: str):
         self.user_id = user_id
         self.db_url = db_url
@@ -45,16 +48,12 @@ class Memory:
         self.mem0 = Mem0Memory.from_config(config)
 
         # session handling
-        self.session_id = (
-            session_id if session_id is not None else str(uuid.uuid4())
-        )
-
+        self.session_id = session_id if session_id is not None else str(uuid.uuid4())
 
     def start_new_session(self):
         """Start a new chat session."""
         self.session_id = str(uuid.uuid4())
         return self.session_id
-
 
     def add_memory(self, message: str, role: str = "user") -> bool:
         """Add a single turn to Mem0 + Postgres."""
@@ -62,13 +61,12 @@ class Memory:
             metadata = {
                 "user_id": self.user_id,
                 "session_id": self.session_id,
-                "role": role
+                "role": role,
             }
 
             # store in mem0
             self.mem0.add(messages=message, metadata=metadata, user_id=self.user_id)
 
-            store in postgres
             conn = psycopg2.connect(self.db_url)
             cur = conn.cursor()
             cur.execute(
@@ -76,7 +74,7 @@ class Memory:
                 INSERT INTO conversation_context (user_id, session_id, role, message)
                 VALUES (%s, %s, %s, %s)
                 """,
-                (self.user_id, self.session_id, role, message)
+                (self.user_id, self.session_id, role, message),
             )
             conn.commit()
             cur.close()
@@ -85,8 +83,8 @@ class Memory:
             return True
 
         except Exception as e:
+            print(e)
             return False
-
 
     def retrieve_memory(self, query: str = "", mem0_limit: int = 50) -> Dict[str, Any]:
         """Retrieve relevant memories for the current user."""
@@ -112,7 +110,7 @@ class Memory:
                 WHERE user_id = %s
                 ORDER BY id ASC
                 """,
-                (self.user_id,)
+                (self.user_id,),
             )
             ctx_rows = cur.fetchall()
             cur.close()
@@ -122,7 +120,7 @@ class Memory:
 
             return {
                 "conversation_ctx": conversation_ctx,
-                "retrieved_memories": memory_entries
+                "retrieved_memories": memory_entries,
             }
 
         except Exception as e:
@@ -131,10 +129,11 @@ class Memory:
 
 if __name__ == "__main__":
 
-    test_instance = Memory(user_id="alice_test", session_id="session_test", db_url="postgresql://postgres:your-super-secret-and-long-postgres-password@localhost:54322/postgres")
+    test_instance = Memory(
+        user_id="alice_test",
+        session_id="session_test",
+        db_url="postgresql://postgres:your-super-secret-and-long-postgres-password@localhost:54322/postgres",
+    )
 
-    
     print(test_instance.add_memory("My favorite color is blue and I live in New York"))
     print(test_instance.retrieve_memory(query="message"))
-
-
