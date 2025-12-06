@@ -3,6 +3,7 @@ from openai import OpenAI
 # Point to your running ArkOS agent
 client = OpenAI(base_url="http://localhost:1111/v1", api_key="not-needed")
 
+
 def test_agent(prompt: str):
     response = client.chat.completions.create(
         model="ark-agent",
