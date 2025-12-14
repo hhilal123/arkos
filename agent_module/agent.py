@@ -2,7 +2,7 @@
 
 import os
 import sys
-from pydantic import BaseModel, create_model, Field
+from pydantic import create_model, Field
 from typing import List, Tuple
 import json
 from enum import Enum
@@ -10,8 +10,7 @@ from enum import Enum
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from state_module.state_handler import StateHandler
-from state_module.state import State, AgentState
-from model_module.ArkModelNew import ArkModelLink, UserMessage, AIMessage, SystemMessage
+from model_module.ArkModelNew import ArkModelLink, AIMessage, SystemMessage
 from tool_module.tool import Tool
 from memory_module.memory import Memory
 
@@ -20,6 +19,11 @@ MAX_ITER = 10
 
 
 class Agent:
+    """
+
+    Default agent class
+    """
+
     def __init__(
         self, agent_id: str, flow: StateHandler, memory: Memory, llm: ArkModelLink
     ):
@@ -28,21 +32,20 @@ class Agent:
         self.memory = memory
         self.llm = llm
         self.current_state = self.flow.get_initial_state()
-        # self.context: Dict[str, Any] = {}
 
         self.startup_flag = True
         self.tools = []
         self.tool_names = []
 
-    def bind_tool(tool):
+    # def bind_tool(self, tool):
 
-        self.tool.append(tool)
+    #     self.tool.append(tool)
 
-    def find_downloaded_tool(embedding):
-        tool = Tool.pull_tool_from_registry(embedding)
-        tool_name = tool.tool
-        self.bind_tool(tool)
-        self.tool_names.append(tool_name)
+    # def find_downloaded_tool(self, embedding):
+    #     tool = Tool.pull_tool_from_registry(embedding)
+    #     tool_name = tool.tool
+    #     self.bind_tool(tool)
+    #     self.tool_names.append(tool_name)
 
     def create_next_state_class(self, options: List[Tuple[str, str]]):
         """
@@ -55,15 +58,18 @@ class Agent:
         enum_dict = {state: state for state, desc in options}
 
         # add desc into enum dict
-        NextStateEnum = Enum("NextStateEnum", enum_dict)
+        next_state_enum = Enum("NextStateEnum", enum_dict)
 
         # Build the model with a single constrained field
-        NextStateModel = create_model(
+        next_state_model = create_model(
             "NextState",
-            next_state=(NextStateEnum, Field(..., description="The chosen next state")),
+            next_state=(
+                next_state_enum,
+                Field(..., description="The chosen next state"),
+            ),
         )
 
-        return NextStateModel
+        return next_state_model
 
     def call_llm(self, context=None, json_schema=None):
         """
@@ -84,8 +90,14 @@ class Agent:
         return AIMessage(content=llm_response)
 
     def choose_transition(self, transitions_dict, messages):
+        """
+        Chooses subsequent transition in state graph
+        """
 
-        prompt = "given the following state transitions, and the preceeding context. output the most reasonable next state. do not use tool result to determine the next state"
+        prompt = """given the following state transitions, and the 
+                preceeding context. output the most reasonable next state. 
+                do not use tool result to determine the next state"""
+
         transition_tuples = list(zip(transitions_dict["tt"], transitions_dict["td"]))
 
         # creates pydantic class and a model dump
@@ -153,7 +165,7 @@ class Agent:
 
         self.add_context(messages)
 
-        print("recieved message")
+        print("agent.py recieved message")
 
         # messages_list = self.context.get("messages", [])
         # messages_list = self.memory.retrieve_memory()
@@ -164,8 +176,8 @@ class Agent:
         last_ai_message = None
 
         retry_count = 0
-        print(self.current_state)
-        print(self.current_state.is_terminal)
+        print("agent.py CURR STATE: ", self.current_state)
+        print("agent.py IS TERMINAL?:", self.current_state.is_terminal)
 
         while not self.current_state.is_terminal:
             ### DEBUGGING
@@ -176,7 +188,6 @@ class Agent:
             retry_count += 1
 
             ### DEBUGGING
-            print(self.current_state)
             # print("MSGS_LIST", messages_list[-1])
 
             context = self.get_context()
@@ -219,27 +230,28 @@ class Agent:
 
 
 if __name__ == "__main__":
+    pass
 
-    content = "how are you "
+    # content = "how are you "
 
-    flow = StateHandler(yaml_path="../state_module/state_graph.yaml")
-    memory = Memory(agent_id="ark-agent")
-    llm = ArkModelLink(
-        base_url="http://localhost:30000/v1"
-    )  # Your already OAI-compatible model
-    test_agent = Agent(agent_id="ark-agent", flow=flow, memory=memory, llm=llm)
-    context_msgs = []
+    # flow = StateHandler(yaml_path="../state_module/state_graph.yaml")
+    # memory = Memory(agent_id="ark-agent")
+    # llm = ArkModelLink(
+    #     base_url="http://localhost:30000/v1"
+    # )  # Your already OAI-compatible model
+    # test_agent = Agent(agent_id="ark-agent", flow=flow, memory=memory, llm=llm)
+    # context_msgs = []
 
-    test_agent.context["messages"] = context_msgs
+    # test_agent.context["messages"] = context_msgs
 
-    context_msgs.append(UserMessage(content="My name is Bill"))
+    # context_msgs.append(UserMessage(content="My name is Bill"))
 
-    context_msgs.append(AIMessage(content=test_agent.step().content))
+    # context_msgs.append(AIMessage(content=test_agent.step().content))
 
-    context_msgs.append(UserMessage(content="What is my name"))
+    # context_msgs.append(UserMessage(content="What is my name"))
 
-    # print(test_agent.context["messages"])
+    # # print(test_agent.context["messages"])
 
-    context_msgs.append(AIMessage(content=test_agent.step().content))
+    # context_msgs.append(AIMessage(content=test_agent.step().content))
 
     # print(test_agent.context["messages"])
