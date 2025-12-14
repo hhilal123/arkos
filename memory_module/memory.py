@@ -1,9 +1,41 @@
 # memory.py
 import os
 import uuid
+import sys
 import psycopg2
 from typing import Dict, Any
 from mem0 import Memory as Mem0Memory
+import datetime
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from model_module.ArkModelNew import (
+    ArkModelLink,
+    Message,
+    UserMessage,
+    AIMessage,
+    SystemMessage,
+    ToolMessage,
+)
+
+
+from typing import Type, Dict
+from pydantic import BaseModel
+
+ROLE_TO_CLASS: Dict[str, Type[Message]] = {
+    "system": SystemMessage,
+    "user": UserMessage,
+    "assistant": AIMessage,
+    "tool": ToolMessage,
+}
+
+
+CLASS_TO_ROLE: Dict[Type[Message], str] = {
+    SystemMessage: "system",
+    UserMessage: "user",
+    AIMessage: "assistant",
+    ToolMessage: "tool",
+}
 
 
 # Global Mem0 config ---------------------
@@ -55,9 +87,29 @@ class Memory:
         self.session_id = str(uuid.uuid4())
         return self.session_id
 
-    def add_memory(self, message: str, role: str = "user") -> bool:
+    def serialize(self, message: Message) -> str:
+        """
+        Convert a Message subclass into the string stored in Postgres.
+        Store role separately in the role column.
+        """
+        return message.model_dump_json()
+
+    def deserialize(self, message: str, role: str) -> Message:
+        """
+        Convert the stored Postgres string back into the correct Message subclass.
+        Requires the role column value.
+        """
+        cls = ROLE_TO_CLASS.get(role)
+        if cls is None:
+            raise ValueError(f"Unknown role: {role}")
+        return cls.model_validate_json(message)
+
+    def add_memory(self, message) -> bool:
         """Add a single turn to Mem0 + Postgres."""
         try:
+
+            role = CLASS_TO_ROLE[type(message)]
+
             metadata = {
                 "user_id": self.user_id,
                 "session_id": self.session_id,
@@ -65,7 +117,9 @@ class Memory:
             }
 
             # store in mem0
-            self.mem0.add(messages=message, metadata=metadata, user_id=self.user_id)
+            self.mem0.add(
+                messages=message.content, metadata=metadata, user_id=self.user_id
+            )
 
             conn = psycopg2.connect(self.db_url)
             cur = conn.cursor()
@@ -74,7 +128,7 @@ class Memory:
                 INSERT INTO conversation_context (user_id, session_id, role, message)
                 VALUES (%s, %s, %s, %s)
                 """,
-                (self.user_id, self.session_id, role, message),
+                (self.user_id, self.session_id, role, self.serialize(message)),
             )
             conn.commit()
             cur.close()
@@ -83,13 +137,25 @@ class Memory:
             return True
 
         except Exception as e:
+            import traceback
+
+            traceback.print_exc()
+            raise
             print(e)
             return False
 
-    def retrieve_memory(self, query: str = "", mem0_limit: int = 50) -> Dict[str, Any]:
-        """Retrieve relevant memories for the current user."""
+    def retrieve_long_memory(
+        self, context: list = [], mem0_limit: int = 50
+    ) -> Dict[str, Any]:
+        """Retrieve relevant long term memories for the current user."""
         try:
             # Mem0 vector retrieval
+
+            query = ""
+
+            for message in context:
+                query += f" \n {message.content}"
+
             results = self.mem0.search(
                 query=query,
                 user_id=self.user_id,
@@ -101,30 +167,47 @@ class Memory:
                 for r in results.get("results", [])
             ]
 
-            # Retrieve entire conversation history
+            memory_string = "retrieved memories:\n" + "\n".join(memory_entries)
+
+            return SystemMessage(content=memory_string)
+
+        except Exception as e:
+            import traceback
+
+            traceback.print_exc()
+            raise
+
+            return "retrieval_failed"
+
+    def retrieve_short_memory(self, turns):
+        """Retrieve relevant short term memories for the current user"""
+        try:
             conn = psycopg2.connect(self.db_url)
             cur = conn.cursor()
             cur.execute(
                 """
-                SELECT role, message FROM conversation_context
+            SELECT role, message
+            FROM (
+                SELECT id, role, message
+                FROM conversation_context
                 WHERE user_id = %s
-                ORDER BY id ASC
-                """,
-                (self.user_id,),
+                ORDER BY id DESC
+                LIMIT %s
+            ) sub
+            ORDER BY id ASC
+            """,
+                (self.user_id, turns),
             )
-            ctx_rows = cur.fetchall()
+
+            rows = cur.fetchall()
             cur.close()
             conn.close()
 
-            conversation_ctx = "\n".join(f"{role}: {msg}" for role, msg in ctx_rows)
-
-            return {
-                "conversation_ctx": conversation_ctx,
-                "retrieved_memories": memory_entries,
-            }
+            return [self.deserialize(message=msg, role=role) for role, msg in rows]
 
         except Exception as e:
-            return {"error": "retrieval failed"}
+            print(e)
+            return []
 
 
 if __name__ == "__main__":
@@ -135,5 +218,13 @@ if __name__ == "__main__":
         db_url="postgresql://postgres:your-super-secret-and-long-postgres-password@localhost:54322/postgres",
     )
 
-    print(test_instance.add_memory("My favorite color is blue and I live in New York"))
-    print(test_instance.retrieve_memory(query="message"))
+    print(
+        test_instance.add_memory(
+            SystemMessage(content="My favorite color is blue and I live in New York")
+        )
+    )
+
+    context = test_instance.retrieve_short_memory(turns=2)
+    print(context)
+
+    print(test_instance.retrieve_long_memory(context))
