@@ -28,10 +28,15 @@ class Agent:
         self.memory = memory
         self.llm = llm
         self.current_state = self.flow.get_initial_state()
-        self.context: Dict[str, Any] = {}
+        # self.context: Dict[str, Any] = {}
 
+        self.startup_flag = True
         self.tools = []
         self.tool_names = []
+
+
+
+    
 
     def bind_tool(tool):
 
@@ -64,7 +69,7 @@ class Agent:
 
         return NextStateModel
 
-    def call_llm(self, input=None, context=None, json_schema=None):
+    def call_llm(self, context=None, json_schema=None):
         """
         Agent's interface with chat model
         input: messages (list), json_schema (json)
@@ -73,13 +78,15 @@ class Agent:
         """
 
         chat_model = self.llm
-        if context:
 
-            llm_response = chat_model.generate_response(context, json_schema)
+        print(context)
+        exit()
+     
+        llm_response = chat_model.generate_response(context, json_schema)
 
-        else:
-            messages = [SystemMessage(content=input)]
-            llm_response = chat_model.generate_response(messages, json_schema)
+            # else:
+            #     messages = [SystemMessage(content=input)]
+            #     llm_response = chat_model.generate_response(messages, json_schema)
 
         return AIMessage(content=llm_response)
 
@@ -109,15 +116,68 @@ class Agent:
         next_state_name = structured_output["next_state"]
 
         return next_state_name
+    def add_context(self, messages):
+        """
+        processes incoming messages for memory module
+        """
 
-    def step(self):
+        assert isinstance(messages, list), "agent.py messages not a list"
+
+
+        for message in messages:
+            self.memory.add_memory(message)
+
+        return None
+
+    def get_context(self, turns=5):
+        """ 
+
+        wrap long term and short term into context window
+        output: list of messages 
+
+        """
+
+
+            
+        short_term_mem = self.memory.retrieve_short_memory(turns)
+
+        long_term_mem = self.memory.retrieve_long_memory(context=short_term_mem)
+
+
+        # output = {"relevant_memories": long_term_mem,
+        #           "conversation_history": short_term_mem,
+        # }
+
+        print("short term mem ", short_term_mem)
+        print("long term mem ", long_term_mem)
+        output = [long_term_mem].extend(short_term_mem)
+
+        return output
+
+
+    
+        
+
+    def step(self, messages):
         """
         Runs the agent until reaching a terminal state or completion.
         Returns the last AIMessage produced.
         """
 
+        # agent.context["messages"].extend(messages)
+
+
+        ## process messages
+
+        self.add_context(messages)
+
+
+
         print("recieved message")
-        messages_list = self.context.get("messages", [])
+
+
+        # messages_list = self.context.get("messages", [])
+        # messages_list = self.memory.retrieve_memory()
         # if not self.current_state:
         #     print("GETTINT INITIAL")
         #     self.current_state = self.flow.get_initial_state()
@@ -138,11 +198,19 @@ class Agent:
 
             ### DEBUGGING
             print(self.current_state)
-            print("MSGS_LIST", messages_list[-1])
-            update = self.current_state.run(messages_list, self)
+            # print("MSGS_LIST", messages_list[-1])
+
+            context = self.get_context()
+            print("****** CONTEXT *****")
+            print(context)
+            print("*** AGENT.PY EOM *****")
+            update = self.current_state.run(context, self)
             print("UPDATE", update)
             if update:
-                messages_list.append(update)
+                # messages_list.append(update)
+                update_list = [update]
+                self.add_context(update_list) # add update to memory
+            
                 if isinstance(update, AIMessage):
                     last_ai_message = update
 
@@ -151,6 +219,7 @@ class Agent:
                 break
 
             if self.current_state.check_transition_ready(messages_list):
+
                 transition_dict = self.flow.get_transitions(
                     self.current_state, messages_list
                 )
