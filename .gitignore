@@ -1,4 +1,6 @@
 .DS_Store
+.env 
+/secrets
 
 /model_module/models/*
 /model_module/data/*
