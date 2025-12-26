@@ -22,6 +22,6 @@ class StateAI(State):
     def check_transition_ready(self, context):
         return True
 
-    def run(self, context, agent):
-        agent_response = agent.call_llm(context=context)
+    async def run(self, context, agent):
+        agent_response = await agent.call_llm(context=context)
         return agent_response  # ← return, not print
