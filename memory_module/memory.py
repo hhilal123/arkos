@@ -5,12 +5,11 @@ import sys
 import psycopg2
 from typing import Dict, Any
 from mem0 import Memory as Mem0Memory
-import datetime
+from dotenv import load_dotenv
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from model_module.ArkModelNew import (
-    ArkModelLink,
     Message,
     UserMessage,
     AIMessage,
@@ -19,8 +18,7 @@ from model_module.ArkModelNew import (
 )
 
 
-from typing import Type, Dict
-from pydantic import BaseModel
+from typing import Type
 
 ROLE_TO_CLASS: Dict[str, Type[Message]] = {
     "system": SystemMessage,
@@ -39,13 +37,15 @@ CLASS_TO_ROLE: Dict[Type[Message], str] = {
 
 
 # Global Mem0 config ---------------------
+# Load .env file
+load_dotenv()
 os.environ["OPENAI_API_KEY"] = "sk"
 
 config = {
     "vector_store": {
         "provider": "supabase",
         "config": {
-            "connection_string": "postgresql://postgres:your-super-secret-and-long-postgres-password@localhost:54322/postgres",
+            "connection_string": os.environ["DB_URL"],
             "collection_name": "memories",
             "index_method": "hnsw",
             "index_measure": "cosine_distance",
@@ -107,7 +107,6 @@ class Memory:
     def add_memory(self, message) -> bool:
         """Add a single turn to Mem0 + Postgres."""
         try:
-
             role = CLASS_TO_ROLE[type(message)]
 
             metadata = {
@@ -171,7 +170,7 @@ class Memory:
 
             return SystemMessage(content=memory_string)
 
-        except Exception as e:
+        except Exception:
             import traceback
 
             traceback.print_exc()
@@ -211,11 +210,8 @@ class Memory:
 
 
 if __name__ == "__main__":
-
     test_instance = Memory(
-        user_id="alice_test",
-        session_id="session_test",
-        db_url="postgresql://postgres:your-super-secret-and-long-postgres-password@localhost:54322/postgres",
+        user_id="alice_test", session_id="session_test", db_url=os.environ["DB_URL"]
     )
 
     print(
