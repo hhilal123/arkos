@@ -11,7 +11,6 @@ from enum import Enum
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from state_module.state_handler import StateHandler
 from model_module.ArkModelNew import ArkModelLink, AIMessage, SystemMessage
-from tool_module.tool import Tool
 from memory_module.memory import Memory
 
 
@@ -112,20 +111,10 @@ class Agent:
 
         context_text = [SystemMessage(content=prompt)] + messages
         output = self.call_llm(context=context_text, json_schema=json_schema)
-        # print(output.content)
         
-        # Check if LLM call failed (error message instead of valid response)
-        if output.content and output.content.startswith("Error:"):
-            raise RuntimeError(f"LLM connection failed - is the LLM server running on port 30000? Error: {output.content}")
+        structured_output = json.loads(output.content)
         
-        try:
-            structured_output = json.loads(output.content)
-        except json.JSONDecodeError as e:
-            raise RuntimeError(f"Failed to parse LLM response as JSON. Response was: '{output.content[:200]}'") from e
 
-        # HANDLE ERROR GRACEFULL
-        if "error" in output.content:
-            raise ValueError("AGENT.PY FAILED LLM CALL")
         next_state_name = structured_output["next_state"]
 
         return next_state_name
