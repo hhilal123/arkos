@@ -140,7 +140,7 @@ class ArkModelLink(BaseModel):
             # The result is now available after the await
             message_from_llm = chat_completion.choices[0].message.content
 
-            # Return the raw content/schema result string
+
             return message_from_llm
 
         except Exception as e:

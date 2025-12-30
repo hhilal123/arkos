@@ -111,14 +111,14 @@ class Agent:
         }
 
         context_text = [SystemMessage(content=prompt)] + messages
+
         
         output = await self.call_llm(context=context_text, json_schema=json_schema)
+
         
         structured_output = json.loads(output.content)
+        
 
-        # HANDLE ERROR GRACEFULL
-        if "error" in output.content:
-            raise ValueError("AGENT.PY FAILED LLM CALL")
         next_state_name = structured_output["next_state"]
 
         return next_state_name
@@ -238,3 +238,4 @@ class Agent:
 
 if __name__ == "__main__":
     pass
+
