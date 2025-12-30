@@ -11,7 +11,6 @@ from enum import Enum
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from state_module.state_handler import StateHandler
 from model_module.ArkModelNew import ArkModelLink, AIMessage, SystemMessage
-from tool_module.tool import Tool
 from memory_module.memory import Memory
 
 
@@ -112,11 +111,10 @@ class Agent:
 
         context_text = [SystemMessage(content=prompt)] + messages
         output = self.call_llm(context=context_text, json_schema=json_schema)
+        
         structured_output = json.loads(output.content)
+        
 
-        # HANDLE ERROR GRACEFULL
-        if "error" in output.content:
-            raise ValueError("AGENT.PY FAILED LLM CALL")
         next_state_name = structured_output["next_state"]
 
         return next_state_name
@@ -234,13 +232,21 @@ if __name__ == "__main__":
 
     # content = "how are you "
 
-    # flow = StateHandler(yaml_path="../state_module/state_graph.yaml")
-    # memory = Memory(agent_id="ark-agent")
-    # llm = ArkModelLink(
-    #     base_url="http://localhost:30000/v1"
-    # )  # Your already OAI-compatible model
-    # test_agent = Agent(agent_id="ark-agent", flow=flow, memory=memory, llm=llm)
-    # context_msgs = []
+    # Resolve state graph path relative to this script's location (not CWD)
+    import os
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    state_graph_path = os.path.join(
+        os.path.dirname(script_dir),  # Go up to arkos root
+        "state_module",
+        "state_graph.yaml"
+    )
+    flow = StateHandler(yaml_path=state_graph_path)
+    memory = Memory(agent_id="ark-agent")
+    llm = ArkModelLink(
+        base_url="http://localhost:30000/v1"
+    )  # Your already OAI-compatible model
+    test_agent = Agent(agent_id="ark-agent", flow=flow, memory=memory, llm=llm)
+    context_msgs = []
 
     # test_agent.context["messages"] = context_msgs
 

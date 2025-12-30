@@ -131,6 +131,8 @@ class ArkModelLink(BaseModel):
             )
             message_from_llm = chat_completion.choices[0].message.content
 
+
+
             return message_from_llm
 
         except Exception as e:
