@@ -55,15 +55,44 @@ pip install -r requirements.txt
 
 ## Instructions
 
-### Start Inference Engine
+### Deployment Environment: MIT SIPB Shared Server (ark.mit.edu)
 
-The project uses SGLang to run the Qwen 2.5-7B-Instruct model. Start the inference server:
+**⚠️ IMPORTANT:** ARK OS is deployed on a **shared server** where multiple team members work simultaneously. This means:
+- **Port conflicts** can occur when multiple users run the same services
+- The **LLM inference server (port 30000)** is shared among all users
+- You should use **unique ports** for your API server instance
+
+### Start Inference Engine (REQUIRED FIRST!)
+
+**⚠️ IMPORTANT:** The LLM server MUST be running before starting any ARK OS applications. Without it, you'll get connection errors.
+
+#### Check if LLM Server is Already Running
+
+Since this is a shared server, someone else may have already started it:
+
+```bash
+# Check if port 30000 is in use
+lsof -i :30000
+
+# Or verify it's responding
+curl http://localhost:30000/v1/models
+```
+
+If you see output, the LLM server is already running - **you can skip starting it**.
+
+#### Starting the LLM Server (if not running)
+
+**Before starting:** Check with your team to avoid conflicts.
+
+The project uses SGLang to run the Qwen 2.5-7B-Instruct model:
 
 ```bash
 bash model_module/run.sh
 ```
 
-This will start the SGLang server on port 30000. The model Qwen/Qwen2.5-7B-Instruct is currently in use.
+This starts the SGLang server on port 30000 using Docker and GPU. Wait for "server started" messages (may take 1-2 minutes on first run).
+
+**Note:** Only ONE instance can run on port 30000 at a time. If someone else is using it, coordinate with your team.
 
 ### Running the Application
 

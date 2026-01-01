@@ -1,4 +1,4 @@
-# agent.py
+    # agent.py
 
 import os
 import sys
@@ -10,6 +10,7 @@ from enum import Enum
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from state_module.state_handler import StateHandler
+# Assuming ArkModelLink.generate_response is actually ArkModelLink.agenerate_response
 from model_module.ArkModelNew import ArkModelLink, AIMessage, SystemMessage
 from memory_module.memory import Memory
 
@@ -37,14 +38,14 @@ class Agent:
         self.tool_names = []
 
     # def bind_tool(self, tool):
-
-    #     self.tool.append(tool)
+    #
+    #    self.tool.append(tool)
 
     # def find_downloaded_tool(self, embedding):
-    #     tool = Tool.pull_tool_from_registry(embedding)
-    #     tool_name = tool.tool
-    #     self.bind_tool(tool)
-    #     self.tool_names.append(tool_name)
+    #    tool = Tool.pull_tool_from_registry(embedding)
+    #    tool_name = tool.tool
+    #    self.bind_tool(tool)
+    #    self.tool_names.append(tool_name)
 
     def create_next_state_class(self, options: List[Tuple[str, str]]):
         """
@@ -70,7 +71,7 @@ class Agent:
 
         return next_state_model
 
-    def call_llm(self, context=None, json_schema=None):
+    async def call_llm(self, context=None, json_schema=None):
         """
         Agent's interface with chat model
         input: messages (list), json_schema (json)
@@ -80,24 +81,24 @@ class Agent:
 
         chat_model = self.llm
 
-        llm_response = chat_model.generate_response(context, json_schema)
+        llm_response = await chat_model.generate_response(context, json_schema)
 
         # else:
-        #     messages = [SystemMessage(content=input)]
-        #     llm_response = chat_model.generate_response(messages, json_schema)
+        #    messages = [SystemMessage(content=input)]
+        #    llm_response = chat_model.generate_response(messages, json_schema)
 
         return AIMessage(content=llm_response)
 
-    def choose_transition(self, transitions_dict, messages):
+    async def choose_transition(self, transitions_dict, messages):
         """
         Chooses subsequent transition in state graph
         """
 
-        prompt = """given the following state transitions, and the 
-                preceeding context. output the most reasonable next state. 
-                do not use tool result to determine the next state"""
-
         transition_tuples = list(zip(transitions_dict["tt"], transitions_dict["td"]))
+        prompt = f"""given the context of the conversation and the following state options {transition_tuples} output the most reasonable next state. 
+                 do not use tool result to determine the next state"""
+
+
 
         # creates pydantic class and a model dump
         NextStates = self.create_next_state_class(transition_tuples)
@@ -110,12 +111,14 @@ class Agent:
         }
 
         context_text = [SystemMessage(content=prompt)] + messages
-        output = self.call_llm(context=context_text, json_schema=json_schema)
-        structured_output = json.loads(output.content)
 
-        # HANDLE ERROR GRACEFULL
-        if "error" in output.content:
-            raise ValueError("AGENT.PY FAILED LLM CALL")
+        
+        output = await self.call_llm(context=context_text, json_schema=json_schema)
+
+        
+        structured_output = json.loads(output.content)
+        
+
         next_state_name = structured_output["next_state"]
 
         return next_state_name
@@ -152,7 +155,7 @@ class Agent:
 
         return output
 
-    def step(self, messages):
+    async def step(self, messages):
         """
         Runs the agent until reaching a terminal state or completion.
         Returns the last AIMessage produced.
@@ -169,8 +172,8 @@ class Agent:
         # messages_list = self.context.get("messages", [])
         # messages_list = self.memory.retrieve_memory()
         # if not self.current_state:
-        #     print("GETTINT INITIAL")
-        #     self.current_state = self.flow.get_initial_state()
+        #    print("GETTINT INITIAL")
+        #    self.current_state = self.flow.get_initial_state()
 
         last_ai_message = None
 
@@ -179,6 +182,7 @@ class Agent:
         print("agent.py IS TERMINAL?:", self.current_state.is_terminal)
 
         while not self.current_state.is_terminal:
+            print("Inner loop")
             ### DEBUGGING
 
             if retry_count > MAX_ITER:
@@ -190,7 +194,8 @@ class Agent:
             # print("MSGS_LIST", messages_list[-1])
 
             context = self.get_context()
-            update = self.current_state.run(context, self)
+            update = await self.current_state.run(context, self)
+            print("inner_loop_update: ", update)
             if update:
                 # messages_list.append(update)
                 update_list = [update]
@@ -214,11 +219,14 @@ class Agent:
                 if len(transition_names) == 1:
                     next_state_name = transition_names[0]
                 else:
-                    next_state_name = self.choose_transition(
+                    # 🟢 FIX 4: Add 'await' to call the async choose_transition method
+                    next_state_name = await self.choose_transition(
                         transition_dict, messages_list
                     )
 
                 self.current_state = self.flow.get_state(next_state_name)
+                print("agent.py CURR STATE: ", self.current_state)
+
 
             else:
                 print("REACHED NO NEXT STATE")
@@ -231,26 +239,3 @@ class Agent:
 if __name__ == "__main__":
     pass
 
-    # content = "how are you "
-
-    # flow = StateHandler(yaml_path="../state_module/state_graph.yaml")
-    # memory = Memory(agent_id="ark-agent")
-    # llm = ArkModelLink(
-    #     base_url="http://localhost:30000/v1"
-    # )  # Your already OAI-compatible model
-    # test_agent = Agent(agent_id="ark-agent", flow=flow, memory=memory, llm=llm)
-    # context_msgs = []
-
-    # test_agent.context["messages"] = context_msgs
-
-    # context_msgs.append(UserMessage(content="My name is Bill"))
-
-    # context_msgs.append(AIMessage(content=test_agent.step().content))
-
-    # context_msgs.append(UserMessage(content="What is my name"))
-
-    # # print(test_agent.context["messages"])
-
-    # context_msgs.append(AIMessage(content=test_agent.step().content))
-
-    # print(test_agent.context["messages"])
