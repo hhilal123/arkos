@@ -11,7 +11,6 @@ from enum import Enum
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from state_module.state_handler import StateHandler
 from model_module.ArkModelNew import ArkModelLink, AIMessage, SystemMessage
-from tool_module.tool import Tool
 from memory_module.memory import Memory
 
 

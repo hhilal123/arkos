@@ -94,3 +94,4 @@ You need to run both the API server and the test interface:
 | Bryce Roberts         | Backend        | BryceRoberts13  | MIT           |
 | Angela Liu            | Backend        | angelaliu6      | MIT           |
 | Ishaana Misra         | Backend        | ishaanam        | MIT           |
+| Hudson Hilal          | Backend        | hhilal123       | MIT           |
