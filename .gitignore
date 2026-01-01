@@ -13,6 +13,9 @@
 **/__pycache__/
 **/*.pyc
 
+.env
+*.env
+!.env.example
 /scripts/*
 
 # cursor

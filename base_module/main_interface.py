@@ -1,20 +1,24 @@
 from openai import OpenAI
+from config_module.loader import config
 
 # Point to your running ArkOS agent
-client = OpenAI(base_url="http://localhost:1112/v1", api_key="not-needed")
+client = OpenAI(
+    base_url=f"http://localhost:{config.get('app.port')}/v1",
+    api_key="not-needed"
+)
 
 
 def test_agent(prompt: str):
     response = client.chat.completions.create(
-        model="ark-agent",
-        messages=[{"role": "user", "content": prompt}]
+        model="ark-agent", messages=[{"role": "user", "content": prompt}]
     )
-    
+
     message = response.choices[0].message.content
     print("=== Agent Response ===")
     print(message)
     print("======================")
     return message
+
 
 if __name__ == "__main__":
     while True:
@@ -22,4 +26,3 @@ if __name__ == "__main__":
         if user_input.strip().lower() in ["exit", "quit"]:
             break
         test_agent(user_input)
-
