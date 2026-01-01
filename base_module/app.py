@@ -9,11 +9,7 @@ import sys
 # Standard boilerplate for module imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-
 from config_module.loader import config
-
-# Import the necessary modules (assuming they now have async support)
-
 from agent_module.agent import Agent
 from state_module.state_handler import StateHandler
 from memory_module.memory import Memory
@@ -37,9 +33,6 @@ memory = Memory(
 
 # Default system prompt for the agent
 
-    # NOTE: Database access in Memory must be async if using a true async DB driver (e.g., asyncpg)
-    db_url="postgresql://postgres:your-super-secret-and-long-postgres-password@localhost:54322/postgres"
-)
 # ArkModelLink now uses AsyncOpenAI internally
 llm = ArkModelLink(base_url=config.get("llm.base_url"))
 agent = Agent(agent_id=config.get("memory.user_id"), flow=flow, memory=memory, llm=llm)
