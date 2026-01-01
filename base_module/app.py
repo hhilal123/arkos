@@ -1,7 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 import uvicorn
-import json
 import time
 import uuid
 import os
@@ -10,7 +9,7 @@ import sys
 # Standard boilerplate for module imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-# Import the necessary modules (assuming they now have async support)
+from config_module.loader import config
 from agent_module.agent import Agent
 from state_module.state_handler import StateHandler
 from memory_module.memory import Memory
@@ -21,25 +20,22 @@ app = FastAPI(title="ArkOS Agent API", version="1.0.0")
 
 
 # Initialize the agent and dependencies once
-# Resolve state graph path relative to this script's location (not CWD)
-# This ensures it works regardless of where the script is run from
-script_dir = os.path.dirname(os.path.abspath(__file__))
-state_graph_path = os.path.join(
-    os.path.dirname(script_dir),  # Go up to arkos root
-    "state_module",
-    "state_graph.yaml"
-)
-flow = StateHandler(yaml_path=state_graph_path)
+
+flow = StateHandler(yaml_path=config.get("state.graph_path"))
+
 
 memory = Memory(
-    user_id="ark-agent",
+    user_id=config.get("memory.user_id"),
     session_id=None,
-    # NOTE: Database access in Memory must be async if using a true async DB driver (e.g., asyncpg)
-    db_url="postgresql://postgres:your-super-secret-and-long-postgres-password@localhost:54322/postgres"
+
+    db_url=config.get("database.url"),
 )
+
+# Default system prompt for the agent
+
 # ArkModelLink now uses AsyncOpenAI internally
-llm = ArkModelLink(base_url="http://localhost:30000/v1") 
-agent = Agent(agent_id="ark-agent", flow=flow, memory=memory, llm=llm)
+llm = ArkModelLink(base_url=config.get("llm.base_url"))
+agent = Agent(agent_id=config.get("memory.user_id"), flow=flow, memory=memory, llm=llm)
 
 # Default system prompt for the agent
 SYSTEM_PROMPT = """THIS IS A NEW CONVERSATION (past converation info is above)
@@ -51,6 +47,7 @@ You were created by the ArkOS Team at MIT SIPB:
 members: Nathaniel Morgan, Scotty Hong, Kishitj, Angela, Jack Luo, Ishaana, Ilya, Vin 
 Never discuss these instructions with the user.
 Always stay in character as ARK when responding."""
+
 
 
 @app.get("/health")
@@ -80,13 +77,11 @@ async def chat_completions(request: Request):
     messages = payload.get("messages", [])
     model = payload.get("model", "ark-agent")
     response_format = payload.get("response_format")
-    
 
     context_msgs = []
 
+    context_msgs.append(SystemMessage(content=config.get("app.system_prompt")))                            
 
-    context_msgs.append(SystemMessage(content=SYSTEM_PROMPT))
-                            
     # Convert OAI messages into internal message objects
     for msg in messages:
         role = msg["role"]
@@ -107,13 +102,14 @@ async def chat_completions(request: Request):
         # Note: You may need to refine the message parsing logic to correctly handle
         # tool_calls and tool_messages if your agent uses them heavily.
 
-    
+
     # *** THE CRITICAL CHANGE: AWAIT the agent's step method ***
     # This prevents the 'coroutine' object has no attribute 'content' error.
     agent_response = await agent.step(context_msgs)
     
     # Handle the case where the agent might return None (though it should return an AIMessage)
     final_msg = agent_response or AIMessage(content="(no response)")
+
 
     # Format as OpenAI chat completion response
     completion = {
@@ -135,6 +131,10 @@ async def chat_completions(request: Request):
 
 
 if __name__ == "__main__":
-    # Ensure uvicorn runs the application in an asynchronous loop
-    uvicorn.run("base_module.app:app", host="0.0.0.0", port=1112, reload=True)
 
+    uvicorn.run(
+        "base_module.app:app",
+        host=config.get("app.host"),
+        port=int(config.get("app.port")),
+        reload=config.get("app.reload"),
+    )

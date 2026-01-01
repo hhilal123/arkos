@@ -94,21 +94,33 @@ This starts the SGLang server on port 30000 using Docker and GPU. Wait for "serv
 
 **Note:** Only ONE instance can run on port 30000 at a time. If someone else is using it, coordinate with your team.
 
+### Setting .env Variables 
+
+You need to create a .env and set DB_URL before starting the application
+
+1. ***Copy example env file**:
+   ```bash
+   cp .env.example .env 
+   ```
+2. ** Edit .env**:
+   ```bash
+   # Set DB URL
+   DB_URL=postgresql://postgres:your-super-secret-and-long-postgres-password@localhost:54322/postgres
+   ```
+   
 ### Running the Application
 
 You need to run both the API server and the test interface:
 
 1. **Start the API server** (in one terminal):
    ```bash
-   cd base_module
-   python app.py
+   python base_module/app.py
    ```
    This starts the FastAPI server on port 1111, providing the `/v1/chat/completions` endpoint.
 
 2. **Run the test interface** (in another terminal):
    ```bash
-   cd base_module
-   python main_interface.py
+   python base_module/main_interface.py
    ```
    This provides an interactive CLI to test the agent. Type your messages and press Enter. Type `exit` or `quit` to stop.
 
@@ -123,3 +135,4 @@ You need to run both the API server and the test interface:
 | Bryce Roberts         | Backend        | BryceRoberts13  | MIT           |
 | Angela Liu            | Backend        | angelaliu6      | MIT           |
 | Ishaana Misra         | Backend        | ishaanam        | MIT           |
+| Hudson Hilal          | Backend        | hhilal123       | MIT           |
