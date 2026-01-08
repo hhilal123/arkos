@@ -24,12 +24,18 @@ class Agent:
     """
 
     def __init__(
-        self, agent_id: str, flow: StateHandler, memory: Memory, llm: ArkModelLink
+        self,
+        agent_id: str,
+        flow: StateHandler,
+        memory: Memory,
+        llm: ArkModelLink,
+        tool_manager=None,
     ):
         self.agent_id = agent_id
         self.flow = flow
         self.memory = memory
         self.llm = llm
+        self.tool_manager = tool_manager
         self.current_state = self.flow.get_initial_state()
 
         self.startup_flag = True
@@ -205,7 +211,6 @@ class Agent:
 
             messages_list = self.memory.retrieve_short_memory(5)
             if self.current_state.check_transition_ready(messages_list):
-
                 transition_dict = self.flow.get_transitions(
                     self.current_state, messages_list
                 )
