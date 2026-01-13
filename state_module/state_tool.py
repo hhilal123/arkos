@@ -21,6 +21,30 @@ class StateTool(State):
     def check_transition_ready(self, context):
         return True
 
+
+
+    def choose_tool(self, context, Tool_Manager):
+        """
+        Chooses tool to use based on the context and server
+
+
+        """
+
+
+
+    def execute_tool(self, context, tool_registry):
+        """
+        Parses and fills args for chosen tool for tool call execution
+
+
+        """
+
+
+
+
+
+
+
     def run(self, context, agent=None):
 
 

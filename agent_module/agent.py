@@ -12,6 +12,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from state_module.state_handler import StateHandler
 # Assuming ArkModelLink.generate_response is actually ArkModelLink.agenerate_response
 from model_module.ArkModelNew import ArkModelLink, AIMessage, SystemMessage
+from tool_module.tool_call import MCPToolManager
 from memory_module.memory import Memory
 
 
@@ -25,7 +26,7 @@ class Agent:
     """
 
     def __init__(
-        self, agent_id: str, flow: StateHandler, memory: Memory, llm: ArkModelLink
+            self, agent_id: str, flow: StateHandler, memory: Memory, llm: ArkModelLink, tool_manager: MCPToolManager
     ):
         self.agent_id = agent_id
         self.flow = flow
@@ -46,6 +47,44 @@ class Agent:
     #    tool_name = tool.tool
     #    self.bind_tool(tool)
     #    self.tool_names.append(tool_name)
+
+    def create_next_tool_class(self, server_tool_registry: Dict[str, Dict[str, Any]]):
+        """
+        Returns a Pydantic model class with a single field 'tool_call',
+        whose value must be one of the available tool IDs.
+        """
+
+        # 1. Flatten the registry to create Enum members
+        # We use the unique tool ID (server.tool_name) or just the tool name
+        # based on your call_tool logic. 
+        enum_members = {}
+        
+        for server_name, tools in server_tool_registry.items():
+            for tool_name, tool_spec in tools.items():
+                # Use the tool_name as the Enum key/value because 
+                # call_tool(self, tool_name, ...) expects it.
+                description = tool_spec.get("description", "No description provided")
+                enum_members[tool_name] = tool_name
+
+        # 2. Dynamically build the Enum
+        # This allows the LLM to see valid options via the schema
+        ToolEnum = Enum("ToolEnum", enum_members)
+
+        # 3. Build the model with the single field
+        # Field description helps the LLM understand what to select
+        tool_call_args = create_model(
+            "ToolAndArgs",
+            tool_name=(
+                ToolEnum, 
+                Field(description="The name of the tool to execute next")
+            ),
+            arguments=(
+                Dict[str, Any], 
+                Field(default_factory=dict, description="The arguments to pass to the tool")
+            )
+        )
+
+        return tool_call_args
 
     def create_next_state_class(self, options: List[Tuple[str, str]]):
         """
@@ -219,7 +258,6 @@ class Agent:
                 if len(transition_names) == 1:
                     next_state_name = transition_names[0]
                 else:
-                    # 🟢 FIX 4: Add 'await' to call the async choose_transition method
                     next_state_name = await self.choose_transition(
                         transition_dict, messages_list
                     )

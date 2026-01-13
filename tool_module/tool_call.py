@@ -309,23 +309,60 @@ class MCPToolManager:
 
         logger.info(f"Initialized {len(self.clients)} servers with {len(self._tool_registry)} total tools")
 
-    async def list_all_tools(self) -> List[Dict[str, Any]]:
+        # async def list_all_tools(self) -> List[Dict[str, Any]]:
+        #     """
+        #     Get all available tools from all servers.
+
+        #     Returns
+        #     -------
+        #     List[Dict[str, Any]]
+        #         Combined list of all tools with server name added
+        #     """
+        #     all_tools = []
+
+        #     for server_name, client in self.clients.items():
+        #         try:
+        #             tools = await client.list_tools()
+        #             for tool in tools:
+        #                 tool["_server"] = server_name  # Add server metadata
+        #                 all_tools.append(tool)
+        #         except Exception as e:
+        #             logger.error(f"Failed to list tools from '{server_name}': {e}")
+
+        #     return all_tools
+
+    async def list_all_tools(self) -> Dict[str, Dict[str, Any]]:
         """
         Get all available tools from all servers.
 
         Returns
         -------
-        List[Dict[str, Any]]
-            Combined list of all tools with server name added
+        Dict[str, Dict[str, Any]]
+            {
+                server_name: {
+                    tool_name: tool_spec_with_metadata
+                }
+            }
         """
-        all_tools = []
+        all_tools: Dict[str, Dict[str, Any]] = {}
 
         for server_name, client in self.clients.items():
             try:
                 tools = await client.list_tools()
+                server_tools: Dict[str, Any] = {}
+
                 for tool in tools:
-                    tool["_server"] = server_name  # Add server metadata
-                    all_tools.append(tool)
+                    tool_name = tool.get("name")
+                    if not tool_name:
+                        continue
+
+                    tool["_server"] = server_name
+                    tool["_id"] = f"{server_name}.{tool_name}"
+
+                    server_tools[tool_name] = tool
+
+                all_tools[server_name] = server_tools
+
             except Exception as e:
                 logger.error(f"Failed to list tools from '{server_name}': {e}")
 

@@ -14,6 +14,7 @@ from agent_module.agent import Agent
 from state_module.state_handler import StateHandler
 from memory_module.memory import Memory
 from model_module.ArkModelNew import ArkModelLink, UserMessage, SystemMessage, AIMessage
+from tool_module.tool_call import MCPToolManager
 
 
 app = FastAPI(title="ArkOS Agent API", version="1.0.0")
@@ -35,7 +36,8 @@ memory = Memory(
 
 # ArkModelLink now uses AsyncOpenAI internally
 llm = ArkModelLink(base_url=config.get("llm.base_url"))
-agent = Agent(agent_id=config.get("memory.user_id"), flow=flow, memory=memory, llm=llm)
+tool_manager = MCPToolManager()
+agent = Agent(agent_id=config.get("memory.user_id"), flow=flow, memory=memory, llm=llm, tool_manager=tool_manager)
 
 # Default system prompt for the agent
 SYSTEM_PROMPT = """THIS IS A NEW CONVERSATION (past converation info is above)
