@@ -1,5 +1,9 @@
+
+import os, sys
 from openai import OpenAI
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from config_module.loader import config
+
 
 # Point to your running ArkOS agent
 client = OpenAI(
