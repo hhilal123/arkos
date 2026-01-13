@@ -23,21 +23,41 @@ class StateTool(State):
 
 
 
-    def choose_tool(self, context, Tool_Manager):
+    def choose_tool(self, context, agent):
         """
         Chooses tool to use based on the context and server
 
-
+        
         """
 
+        raise NotImplementedError
 
 
-    def execute_tool(self, context, tool_registry):
+        prompt="based on the above user request, choose the tool and arguments for the tool which will satisfy the users request"
+
+
+        all_tools = agent.tool_manager.list_all_tools()
+
+        
+
+    def execute_tool(self, tool_call, agent):
         """
         Parses and fills args for chosen tool for tool call execution
 
 
         """
+
+        raise NotImplementedError
+
+        tool_name = tool_args['tool_name']
+        tool_args= tool_call['tool_args']
+
+        tool_result = agent.tool_manager.call_tool(tool_name=tool_name, arguments=tool_args)
+
+
+
+
+
 
 
 
@@ -48,15 +68,9 @@ class StateTool(State):
     def run(self, context, agent=None):
 
 
-        # extract tool name 
+        tool_arg_dict = self.choose_tool(context, agent)
 
-        # extract tool parameters
+        tool_result = self.execute_tool(context, agent)
 
-
-        # call tool 
-        
-
-        # return tool msg
-        print("TOOL RESULT PLACEHOLDER")
-        return SystemMessage(content="Result: 3*6 is 18")
+        return SystemMessage(content=tool_result)
 
