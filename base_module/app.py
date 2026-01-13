@@ -9,6 +9,8 @@ import sys
 # Standard boilerplate for module imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from contextlib import asynccontextmanager
+from tool_module.tool_call import MCPToolManager
 from config_module.loader import config
 from agent_module.agent import Agent
 from state_module.state_handler import StateHandler
@@ -16,27 +18,58 @@ from memory_module.memory import Memory
 from model_module.ArkModelNew import ArkModelLink, UserMessage, SystemMessage, AIMessage
 
 
-app = FastAPI(title="ArkOS Agent API", version="1.0.0")
+tool_manager = None
+flow = None
+memory = None
+llm = None
+agent = None
 
 
-# Initialize the agent and dependencies once
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global tool_manager, flow, memory, llm, agent
 
-flow = StateHandler(yaml_path=config.get("state.graph_path"))
+    # STARTUP
+    print("Initializing ARKOS components...")
+
+    # Initialize synchronous components
+    flow = StateHandler(yaml_path=config.get("state.graph_path"))
+    memory = Memory(
+        user_id=config.get("memory.user_id"),
+        session_id=None,
+        db_url=config.get("database.url"),
+    )
+    llm = ArkModelLink(base_url=config.get("llm.base_url"))
+    agent = Agent(
+        agent_id=config.get("memory.user_id"),
+        flow=flow,
+        memory=memory,
+        llm=llm,
+        tool_manager=None,
+    )
+
+    # Initialize MCP servers (async)
+    mcp_config = config.get("mcp_servers")
+    if mcp_config:
+        tool_manager = MCPToolManager(mcp_config)
+        await tool_manager.initialize_servers()
+        agent.tool_manager = tool_manager
+        print(f"Initialized {len(tool_manager.clients)} MCP servers")
+    else:
+        tool_manager = None
+        print("No MCP servers configured")
+
+    print("ARKOS ready!")
+
+    yield
+
+    # SHUTDOWN
+    if tool_manager:
+        await tool_manager.shutdown()
+        print("MCP servers shut down")
 
 
-memory = Memory(
-    user_id=config.get("memory.user_id"),
-    session_id=None,
-
-    db_url=config.get("database.url"),
-)
-
-# Default system prompt for the agent
-
-# ArkModelLink now uses AsyncOpenAI internally
-llm = ArkModelLink(base_url=config.get("llm.base_url"))
-agent = Agent(agent_id=config.get("memory.user_id"), flow=flow, memory=memory, llm=llm)
-
+app = FastAPI(title="ArkOS Agent API", version="1.0.0", lifespan=lifespan)
 # Default system prompt for the agent
 SYSTEM_PROMPT = """THIS IS A NEW CONVERSATION (past converation info is above)
 
