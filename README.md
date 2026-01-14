@@ -136,3 +136,4 @@ You need to run both the API server and the test interface:
 | Angela Liu            | Backend        | angelaliu6      | MIT           |
 | Ishaana Misra         | Backend        | ishaanam        | MIT           |
 | Hudson Hilal          | Backend        | hhilal123       | MIT           |
+| Calvin Baker          | Backend        | Calvinlb404     | MIT           |
