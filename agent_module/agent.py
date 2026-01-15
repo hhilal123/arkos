@@ -1,4 +1,4 @@
-    # agent.py
+# agent.py
 
 import os
 import sys
@@ -10,9 +10,9 @@ from enum import Enum
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from state_module.state_handler import StateHandler
+
 # Assuming ArkModelLink.generate_response is actually ArkModelLink.agenerate_response
 from model_module.ArkModelNew import ArkModelLink, AIMessage, SystemMessage
-from tool_module.tool_call import MCPToolManager
 from memory_module.memory import Memory
 
 
@@ -26,7 +26,12 @@ class Agent:
     """
 
     def __init__(
-            self, agent_id: str, flow: StateHandler, memory: Memory, llm: ArkModelLink, tool_manager: MCPToolManager
+        self,
+        agent_id: str,
+        flow: StateHandler,
+        memory: Memory,
+        llm: ArkModelLink,
+        tool_manager=None,
     ):
         self.agent_id = agent_id
         self.flow = flow
@@ -37,6 +42,7 @@ class Agent:
         self.startup_flag = True
         self.tools = []
         self.tool_names = []
+        self.available_tools = {}
 
     # def bind_tool(self, tool):
     #
@@ -56,12 +62,12 @@ class Agent:
 
         # 1. Flatten the registry to create Enum members
         # We use the unique tool ID (server.tool_name) or just the tool name
-        # based on your call_tool logic. 
+        # based on your call_tool logic.
         enum_members = {}
-        
+
         for server_name, tools in server_tool_registry.items():
             for tool_name, tool_spec in tools.items():
-                # Use the tool_name as the Enum key/value because 
+                # Use the tool_name as the Enum key/value because
                 # call_tool(self, tool_name, ...) expects it.
                 description = tool_spec.get("description", "No description provided")
                 enum_members[tool_name] = tool_name
@@ -75,13 +81,16 @@ class Agent:
         tool_call_args = create_model(
             "ToolAndArgs",
             tool_name=(
-                ToolEnum, 
-                Field(description="The name of the tool to execute next")
+                ToolEnum,
+                Field(description="The name of the tool to execute next"),
             ),
             arguments=(
-                Dict[str, Any], 
-                Field(default_factory=dict, description="The arguments to pass to the tool")
-            )
+                Dict[str, Any],
+                Field(
+                    default_factory=dict,
+                    description="The arguments to pass to the tool",
+                ),
+            ),
         )
 
         return tool_call_args
@@ -137,8 +146,6 @@ class Agent:
         prompt = f"""given the context of the conversation and the following state options {transition_tuples} output the most reasonable next state. 
                  do not use tool result to determine the next state"""
 
-
-
         # creates pydantic class and a model dump
         NextStates = self.create_next_state_class(transition_tuples)
         json_schema = {
@@ -151,12 +158,9 @@ class Agent:
 
         context_text = [SystemMessage(content=prompt)] + messages
 
-        
         output = await self.call_llm(context=context_text, json_schema=json_schema)
 
-        
         structured_output = json.loads(output.content)
-        
 
         next_state_name = structured_output["next_state"]
 
@@ -249,7 +253,6 @@ class Agent:
 
             messages_list = self.memory.retrieve_short_memory(5)
             if self.current_state.check_transition_ready(messages_list):
-
                 transition_dict = self.flow.get_transitions(
                     self.current_state, messages_list
                 )
@@ -265,7 +268,6 @@ class Agent:
                 self.current_state = self.flow.get_state(next_state_name)
                 print("agent.py CURR STATE: ", self.current_state)
 
-
             else:
                 print("REACHED NO NEXT STATE")
                 break  # No transition ready, exit gracefully
@@ -276,4 +278,3 @@ class Agent:
 
 if __name__ == "__main__":
     pass
-
