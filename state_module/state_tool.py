@@ -32,11 +32,41 @@ class StateTool(State):
 
         raise NotImplementedError
 
+        # select tool ang args
 
-        prompt="based on the above user request, choose the tool and arguments for the tool which will satisfy the users request"
+
+        prompt="based on the above user request, choose the tool which best satisfies the users request" 
+        # IDEA: can agent choose and fill at the same time? 
+        tool_option_class = agent.create_tool_option_class()
+        tool_name = agent.call_llm(context, tool_option_class)
 
 
-        all_tools = agent.tool_manager.list_all_tools()
+        server_name = agent.tool_manager._tool_registry_[tool_name]
+
+        tool_args = agent.tool_manager.list_tools[server_name][tool_name]
+
+
+        fill_tool_args_class = agent.fill_tool_args_class(tool_name, tool_args)
+
+        tool_call = agent.call_llm(context, fill_tool_args_class)
+
+
+
+        return tool_call
+
+        
+
+
+
+
+
+
+
+
+
+
+
+       
 
         
 
@@ -47,12 +77,13 @@ class StateTool(State):
 
         """
 
-        raise NotImplementedError
 
-        tool_name = tool_args['tool_name']
+        tool_name = tool_call['tool_name']
         tool_args= tool_call['tool_args']
 
         tool_result = agent.tool_manager.call_tool(tool_name=tool_name, arguments=tool_args)
+
+        
 
 
 
@@ -68,9 +99,9 @@ class StateTool(State):
     def run(self, context, agent=None):
 
 
-        tool_arg_dict = self.choose_tool(context, agent)
+        tool_arg_dict = self.choose_tool(context=context, agent=agent)
 
-        tool_result = self.execute_tool(context, agent)
+        tool_result = self.execute_tool(tool_call=tool_arg_dict, agent=agent)
 
         return SystemMessage(content=tool_result)
 
