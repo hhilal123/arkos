@@ -30,13 +30,9 @@ class StateTool(State):
         
         """
 
-        raise NotImplementedError
-
-        # select tool ang args
-
-
         prompt="based on the above user request, choose the tool which best satisfies the users request" 
-        # IDEA: can agent choose and fill at the same time? 
+        instructions =  context + [SystemMessage(content=prompt)] 
+
         tool_option_class = agent.create_tool_option_class()
         tool_name = agent.call_llm(context, tool_option_class)
 
@@ -54,22 +50,6 @@ class StateTool(State):
 
         return tool_call
 
-        
-
-
-
-
-
-
-
-
-
-
-
-       
-
-        
-
     def execute_tool(self, tool_call, agent):
         """
         Parses and fills args for chosen tool for tool call execution
@@ -82,18 +62,6 @@ class StateTool(State):
         tool_args= tool_call['tool_args']
 
         tool_result = agent.tool_manager.call_tool(tool_name=tool_name, arguments=tool_args)
-
-        
-
-
-
-
-
-
-
-
-
-
 
 
     def run(self, context, agent=None):
