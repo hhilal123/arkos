@@ -7,8 +7,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from model_module.ArkModelNew import SystemMessage
 
 from state_module.state import State
+from state_module.state_registry import register_state
 
 
+@register_state
 class StateTool(State):
     type = "tool"
 

@@ -8,6 +8,7 @@ and executes tool calls via JSON-RPC 2.0 over stdio.
 import asyncio
 import json
 import logging
+import os
 import subprocess
 from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass
@@ -65,7 +66,12 @@ class MCPClient:
         logger.info(f"Starting MCP server: {self.config.name}")
 
         # Build environment
-        env = dict(self.config.env) if self.config.env else {}
+        # env = dict(self.config.env) if self.config.env else {}
+
+        
+        env = os.environ.copy()
+        if self.config.env:
+            env.update(self.config.env)
 
         try:
             # Start subprocess
@@ -280,6 +286,7 @@ class MCPToolManager:
         logger.info(f"Initializing {len(self.config)} MCP servers")
 
         for server_name, server_config in self.config.items():
+
             try:
                 config = MCPServerConfig(
                     name=server_name,

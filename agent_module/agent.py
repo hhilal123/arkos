@@ -67,7 +67,7 @@ class Agent:
             tool_args=(Dict[str, Any], Field(default_factory=dict, description="Tool args")),
         )
 
-    return ToolCall(tool_name=tool_name, tool_args=tool_args)
+        return ToolCall(tool_name=tool_name, tool_args=tool_args)
 
     def create_tool_option_class(self):
         """
